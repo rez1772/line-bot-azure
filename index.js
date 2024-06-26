@@ -5,10 +5,10 @@ const bodyParser = require('body-parser');
 const app = express();
 app.use(bodyParser.json());
 
-const LINE_CHANNEL_ACCESS_TOKEN = 'FHIvugGVcjhQD4Ah9QY++K06xjoDFE+kWhY2YeW3kFTpcG/4iP7ONXCnlGvk3vVrVjVMNblDoftaRnjqGlOXDtyIs3gXun9TLCNcvkfsfNKMqGTV+CAAkJzPsjzt7p7ts4oVqpzu9NAMEqzMIM+l7gdB04t89/1O/w1cDnyilFU=';
-const LINE_CHANNEL_SECRET = '7922b0f2df73260a8625eed93318374f';
-const AZURE_AI_API_KEY = 'ce5a477a5f4c4a75b745ed4fde3f23f3';
-const AZURE_AI_ENDPOINT = 'https://openn.openai.azure.com/';
+const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
+const AZURE_AI_API_KEY = process.env.AZURE_AI_API_KEY;
+const AZURE_AI_ENDPOINT = process.env.AZURE_AI_ENDPOINT;
 
 app.post('/webhook', async (req, res) => {
     const events = req.body.events;
@@ -18,38 +18,42 @@ app.post('/webhook', async (req, res) => {
             const replyToken = event.replyToken;
 
             // 呼叫Azure AI Studio的聊天服務
-            const response = await axios.post(
-                AZURE_AI_ENDPOINT,
-                {
-                    query: userMessage,
-                    key: AZURE_AI_API_KEY
-                }
-            );
-
-            const botMessage = response.data.reply;
-
-            // 回應LINE使用者
-            await axios.post(
-                'https://api.line.me/v2/bot/message/reply',
-                {
-                    replyToken: replyToken,
-                    messages: [
-                        {
-                            type: 'text',
-                            text: botMessage
-                        }
-                    ]
-                },
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`
+            try {
+                const response = await axios.post(
+                    AZURE_AI_ENDPOINT,
+                    {
+                        query: userMessage,
+                        key: AZURE_AI_API_KEY
                     }
-                }
-            );
+                );
+
+                const botMessage = response.data.reply;
+
+                // 回應LINE使用者
+                await axios.post(
+                    'https://api.line.me/v2/bot/message/reply',
+                    {
+                        replyToken: replyToken,
+                        messages: [
+                            {
+                                type: 'text',
+                                text: botMessage
+                            }
+                        ]
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error('Error calling Azure AI:', error);
+            }
         }
     }
-    res.sendStatus(200);
+    res.sendStatus(200);  // 確保返回狀態碼200
 });
 
 const port = process.env.PORT || 3000;
